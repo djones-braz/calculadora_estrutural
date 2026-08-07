@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MVP Funcional - Cálculo Estrutural & IA - FAETEC-RJ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .chart-container { 
+            position: relative; 
+            width: 100%; 
+            max-width: 500px; 
+            margin-left: auto; 
+            margin-right: auto; 
+            height: 300px; 
+            max-height: 350px; 
+        }
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: #f1f1f1; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #10b981; border-radius: 10px; }
+        .tab-active { border-bottom: 3px solid #10b981; color: #065f46; font-weight: 700; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 overflow-x-hidden">
+
+<!-- Chosen Palette: Slate & Emerald Engineering (Warm neutrals and deep greens for a professional academic feel) -->
+
+<!-- Application Structure Plan: 
+    O aplicativo foi estruturado em um formato de Dashboard Acadêmico de página única. 
+    1. Header: Identificação institucional imediata (FAETEC-RJ) e créditos da aluna e orientador.
+    2. Navegação por Abas: Dividido em 'Calculadora MVP' e 'Contexto da Pesquisa IA'. Isso separa a ferramenta técnica da explicação científica, facilitando o consumo.
+    3. Seção de Calculadora: Grid de duas colunas (Inputs e Resultados Visuais). Uso de cards para métricas rápidas e uma tabela para histórico.
+    4. Seção de Pesquisa: Explica a transição da lógica de volume estrutural para a visão computacional de alimentos.
+    5. Exportação: Botão de ação global para extração de dados em formato .xlsx para fins de relatório.
+-->
+
+<!-- Visualization & Content Choices: 
+    - Goal: Inform/Contextualize -> Texto estruturado e cards de metadados para apresentar a aluna e o orientador.
+    - Goal: Compare/Calculate -> Gráfico de Rosca (Chart.js via Canvas) para mostrar a distribuição volumétrica de cimento/areia/brita.
+    - Goal: Change/Process -> Tabela dinâmica que atualiza conforme novos elementos são adicionados ao cálculo.
+    - Goal: Organize -> Navegação por abas para não sobrecarregar o usuário com texto e ferramentas simultaneamente.
+    - Library: Chart.js para gráficos, SheetJS para Excel. NO SVG/Mermaid.
+-->
+
+<!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 h-20 flex justify-between items-center">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-emerald-600 rounded-lg flex items-center justify-center text-white font-bold text-xl">F</div>
+                <div>
+                    <h1 class="text-lg font-bold leading-tight">FAETEC-RJ <span class="font-light text-slate-500">| Unidade Cachoeiras de Macacu</span></h1>
+                    <p class="text-xs text-emerald-600 font-medium tracking-widest uppercase">Inteligência Artificial Aplicada</p>
+                </div>
+            </div>
+            <div class="hidden md:block text-right">
+                <p class="text-[10px] text-slate-400 uppercase font-bold">Data de Emissão</p>
+                <p class="text-sm font-semibold">Junho de 2026</p>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-8">
+        
+        <div class="mb-10 text-center">
+            <h2 class="text-3xl font-extrabold text-slate-800 mb-2">Cálculo Estrutural & Visão Computacional</h2>
+            <p class="text-slate-500 max-w-2xl mx-auto">Desenvolvido por <span class="text-emerald-700 font-bold">Eduarda Pereira de Lima</span> sob orientação do <span class="text-emerald-700 font-bold">Prof. Djones Braz de Araujo Costa</span>.</p>
+        </div>
+
+        <nav class="flex justify-center gap-8 mb-8 border-b border-slate-200">
+            <button onclick="switchTab('calc')" id="tab-calc" class="tab-active pb-4 text-sm uppercase tracking-wider transition-all">Ferramenta de Cálculo</button>
+            <button onclick="switchTab('about')" id="tab-about" class="pb-4 text-sm uppercase tracking-wider transition-all text-slate-400">Contexto da Pesquisa (IA)</button>
+        </nav>
+
+        <section id="section-calc" class="space-y-8">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                
+                <div class="lg:col-span-4 space-y-6">
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                        <h3 class="text-sm font-bold text-slate-800 uppercase mb-4 flex items-center gap-2">
+                            <span class="w-2 h-6 bg-emerald-500 rounded-full"></span>
+                            Parâmetros Técnicos
+                        </h3>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-1 italic">Tipo de Elemento</label>
+                                <select id="input-type" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+                                    <option value="Laje">Laje Maciça</option>
+                                    <option value="Viga">Viga / Pilar</option>
+                                    <option value="Sapata">Sapata de Fundação</option>
+                                </select>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-500 mb-1 italic">Comp. (L) em metros</label>
+                                    <input type="number" id="input-l" value="5.0" step="0.1" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-500 mb-1 italic">Larg. (W) em metros</label>
+                                    <input type="number" id="input-w" value="4.0" step="0.1" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-1 italic">Espessura/Alt. (H) em metros</label>
+                                <input type="number" id="input-h" value="0.12" step="0.01" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-1 italic">Traço (Cim:Are:Bri)</label>
+                                <select id="input-ratio" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none">
+                                    <option value="1:2:3">1:2:3 (C25 - Estrutural)</option>
+                                    <option value="1:2.5:4">1:2.5:4 (C20 - Geral)</option>
+                                    <option value="1:1.5:3">1:1.5:3 (C30 - Alta Resist.)</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-1 italic">Notas / Descrição</label>
+                                <textarea id="input-desc" placeholder="Ex: Laje do bloco A..." class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm h-20 focus:ring-2 focus:ring-emerald-500 outline-none resize-none"></textarea>
+                            </div>
+
+                            <button onclick="addCalculation()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-lg transition-all shadow-lg shadow-emerald-200">
+                                Calcular e Adicionar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-8 space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 text-center">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Volume Total</p>
+                            <p id="stat-volume" class="text-2xl font-black text-emerald-600 italic">0.00 m³</p>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 text-center">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Cimento (50kg)</p>
+                            <p id="stat-cement" class="text-2xl font-black text-slate-800 italic">0 Sacos</p>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 text-center">
+                            <button onclick="exportToExcel()" class="w-full h-full flex flex-col items-center justify-center group">
+                                <p class="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-1">Exportar Dados</p>
+                                <span class="text-xs font-medium text-slate-400 group-hover:text-emerald-700 transition-colors">Gerar Planilha .XLSX</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center bg-white p-6 rounded-2xl border border-slate-200">
+                        <div>
+                            <h4 class="text-sm font-bold text-slate-800 uppercase mb-2 italic">Proporção de Massa</h4>
+                            <p class="text-xs text-slate-500 mb-6">Visualização da composição do traço selecionado para garantir a trabalhabilidade do concreto.</p>
+                            <div class="space-y-3">
+                                <div class="flex items-center gap-2 text-xs font-semibold">
+                                    <span class="w-3 h-3 bg-emerald-500 rounded-sm"></span> Cimento
+                                </div>
+                                <div class="flex items-center gap-2 text-xs font-semibold">
+                                    <span class="w-3 h-3 bg-amber-400 rounded-sm"></span> Areia
+                                </div>
+                                <div class="flex items-center gap-2 text-xs font-semibold">
+                                    <span class="w-3 h-3 bg-slate-400 rounded-sm"></span> Brita
+                                </div>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="ratioChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                <div class="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                    <h3 class="text-xs font-black text-slate-500 uppercase tracking-tighter italic">Histórico de Dimensionamento Acadêmico</h3>
+                    <span id="counter" class="bg-emerald-100 text-emerald-700 px-2 py-1 rounded text-[10px] font-bold">0 Itens</span>
+                </div>
+                <div class="overflow-x-auto max-h-80 custom-scroll">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-slate-50 sticky top-0">
+                            <tr class="text-[10px] font-bold text-slate-400 uppercase">
+                                <th class="px-6 py-3">Elemento</th>
+                                <th class="px-6 py-3 text-center">Dimensões (m)</th>
+                                <th class="px-6 py-3 text-center">Volume (m³)</th>
+                                <th class="px-6 py-3 text-center">Insumos (Kg)</th>
+                                <th class="px-6 py-3">Descrição Técnica</th>
+                                <th class="px-6 py-3"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body" class="text-sm divide-y divide-slate-100">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section id="section-about" class="hidden">
+            <div class="max-w-4xl mx-auto space-y-12">
+                <div class="bg-white p-10 rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden">
+                    <div class="absolute top-0 right-0 p-8 text-emerald-100 opacity-20">
+                        <span class="text-9xl font-black italic">IA</span>
+                    </div>
+                    
+                    <h3 class="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-3">
+                        <span class="w-8 h-8 bg-emerald-600 text-white flex items-center justify-center rounded-lg text-sm">01</span>
+                        A Natureza do Projeto
+                    </h3>
+                    <div class="prose prose-slate text-slate-600 leading-relaxed space-y-4">
+                        <p>Este sistema é um <strong>MVP Funcional</strong> (Mínimo Produto Viável) desenvolvido para validar a lógica de cálculo tridimensional que servirá de base para a pesquisa principal da aluna <strong>Eduarda Pereira de Lima</strong>.</p>
+                        <p>O foco central da pesquisa é o desenvolvimento de um sistema de <strong>Inteligência Artificial Aplicada</strong> capaz de estimar calorias através da visão computacional. O desafio técnico reside na transformação de uma imagem bidimensional (fotografia) em uma estimativa de volume volumétrico preciso.</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-emerald-50 p-8 rounded-2xl border border-emerald-100">
+                        <h4 class="font-bold text-emerald-800 mb-4 italic">Da Engenharia para a Nutrição</h4>
+                        <p class="text-sm text-emerald-700 leading-relaxed">A mesma matemática utilizada para calcular o concreto necessário para uma laje é aplicada para estimar a massa de um alimento. Mudam-se as densidades e as escalas, mas a lógica de determinação geométrica via visão de máquina permanece a mesma.</p>
+                    </div>
+                    <div class="bg-amber-50 p-8 rounded-2xl border border-amber-100">
+                        <h4 class="font-bold text-amber-800 mb-4 italic">Orientação Acadêmica</h4>
+                        <p class="text-sm text-amber-700 leading-relaxed">Sob a mentoria do <strong>Prof. Djones Braz de Araujo Costa</strong> na <strong>FAETEC-RJ</strong>, este projeto busca democratizar o acesso a ferramentas de cálculo e mostrar como a IA pode resolver problemas cotidianos de saúde e infraestrutura.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="mt-20 border-t border-slate-200 bg-white py-12">
+        <div class="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div class="space-y-4">
+                <p class="text-xs font-black text-slate-400 uppercase tracking-widest">Instituição</p>
+                <p class="text-sm text-slate-600">Fundação de Apoio à Escola Técnica (FAETEC-RJ)<br>Cachoeiras de Macacu</p>
+            </div>
+            <div class="space-y-4">
+                <p class="text-xs font-black text-slate-400 uppercase tracking-widest">Desenvolvimento</p>
+                <p class="text-sm text-slate-600 font-bold">Eduarda Pereira de Lima</p>
+                <p class="text-xs text-slate-500">Curso: Inteligência Artificial Aplicada</p>
+            </div>
+            <div class="space-y-4 text-right">
+                <p class="text-xs font-black text-slate-400 uppercase tracking-widest">Mentoria</p>
+                <p class="text-sm text-slate-600 font-bold italic">Prof. Djones Braz de Araujo Costa</p>
+                <p class="text-[10px] text-emerald-600 font-medium">Repositório GitHub Pages & MVP - Junho 2026</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        let db = [];
+        let chart;
+
+        function initChart() {
+            const ctx = document.getElementById('ratioChart').getContext('2d');
+            chart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Cimento', 'Areia', 'Brita'],
+                    datasets: [{
+                        data: [1, 2, 3],
+                        backgroundColor: ['#10b981', '#fbbf24', '#94a3b8'],
+                        borderWidth: 0,
+                        hoverOffset: 10
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '70%',
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        }
+
+        function switchTab(tab) {
+            document.getElementById('section-calc').classList.toggle('hidden', tab !== 'calc');
+            document.getElementById('section-about').classList.toggle('hidden', tab !== 'about');
+            
+            document.getElementById('tab-calc').classList.toggle('tab-active', tab === 'calc');
+            document.getElementById('tab-calc').classList.toggle('text-slate-400', tab !== 'calc');
+            
+            document.getElementById('tab-about').classList.toggle('tab-active', tab === 'about');
+            document.getElementById('tab-about').classList.toggle('text-slate-400', tab !== 'about');
+        }
+
+        function addCalculation() {
+            const type = document.getElementById('input-type').value;
+            const l = parseFloat(document.getElementById('input-l').value);
+            const w = parseFloat(document.getElementById('input-w').value);
+            const h = parseFloat(document.getElementById('input-h').value);
+            const ratioStr = document.getElementById('input-ratio').value;
+            const desc = document.getElementById('input-desc').value || "N/A";
+
+            if (isNaN(l) || isNaN(w) || isNaN(h)) return alert("Preencha as dimensões!");
+
+            const volume = l * w * h;
+            const ratios = ratioStr.split(':').map(Number);
+            
+            const totalParts = ratios.reduce((a, b) => a + b, 0);
+            const cementPerM3 = 350; // Média kg/m3 para traços estruturais
+            const totalCement = volume * cementPerM3;
+            
+            const item = {
+                id: Date.now(),
+                type, l, w, h, volume, ratioStr, 
+                cementKg: totalCement.toFixed(1),
+                bags: Math.ceil(totalCement / 50),
+                desc
+            };
+
+            db.push(item);
+            updateUI();
+            updateChart(ratios);
+        }
+
+        function updateChart(ratios) {
+            chart.data.datasets[0].data = ratios;
+            chart.update();
+        }
+
+        function updateUI() {
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = "";
+            
+            let totalV = 0;
+            let totalC = 0;
+
+            db.forEach(item => {
+                totalV += item.volume;
+                totalC += item.bags;
+
+                const row = `
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 font-bold text-slate-700">${item.type}</td>
+                        <td class="px-6 py-4 text-center text-xs">${item.l}x${item.w}x${item.h}</td>
+                        <td class="px-6 py-4 text-center font-bold text-emerald-600">${item.volume.toFixed(3)}</td>
+                        <td class="px-6 py-4 text-center text-xs">Cim: ${item.cementKg}kg (${item.bags}sc)</td>
+                        <td class="px-6 py-4 text-xs italic text-slate-500">${item.desc}</td>
+                        <td class="px-6 py-4 text-right">
+                            <button onclick="removeItem(${item.id})" class="text-red-400 hover:text-red-600 text-[10px] font-bold uppercase tracking-widest">Remover</button>
+                        </td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
+
+            document.getElementById('stat-volume').innerText = totalV.toFixed(2) + " m³";
+            document.getElementById('stat-cement').innerText = totalC + " Sacos";
+            document.getElementById('counter').innerText = db.length + " Itens";
+        }
+
+        function removeItem(id) {
+            db = db.filter(i => i.id !== id);
+            updateUI();
+        }
+
+        function exportToExcel() {
+            if (db.length === 0) return alert("Nenhum dado para exportar!");
+
+            const header = [
+                ["RELATÓRIO TÉCNICO - FAETEC-RJ"],
+                ["Desenvolvedora: Eduarda Pereira de Lima"],
+                ["Orientador: Prof. Djones Braz de Araujo Costa"],
+                ["Data: Junho/2026"],
+                [],
+                ["Tipo", "Comp.(m)", "Larg.(m)", "Alt.(m)", "Volume(m3)", "Traço", "Cimento(Kg)", "Sacos(50kg)", "Descrição"]
+            ];
+
+            const rows = db.map(i => [i.type, i.l, i.w, i.h, i.volume, i.ratioStr, i.cementKg, i.bags, i.desc]);
+            const finalData = header.concat(rows);
+
+            const ws = XLSX.utils.aoa_to_sheet(finalData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Calculo_Estrutural");
+            XLSX.writeFile(wb, "Relatorio_Estrutural_Eduarda_Lima.xlsx");
+        }
+
+        window.onload = initChart;
+    </script>
+</body>
+</html>
